@@ -15,5 +15,5 @@ remove: [
 depends: [
   "ocamlfind"       {build}
   "oasis"           {build & >= "0.4.0"}
-  "ppx_deriving"    {>= "4.2" & < "4.3"}
+  "ppx_deriving"    {>= "4.2"}
 ]
