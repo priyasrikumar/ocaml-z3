@@ -4,7 +4,7 @@ authors: "Arjun Guha et al"
 maintainer: "Arjun Guha <arjun@cs.umass.edu>"
 homepage: "https://github.com/priyasrikumar/ocaml-z3"
 bug-reports: "Arjun Guha <arjun@cs.umass.edu>"
-description: "Z3 wrapper"
+synopsis: "Z3 wrapper"
 build: [
   ["./configure" "--prefix" prefix ]
   [make]
