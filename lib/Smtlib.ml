@@ -172,6 +172,8 @@ let rec tactic_to_sexp (t : tactic) : sexp = match t with
     SSymbol "smt"
   | QFBV ->
     SSymbol "qfbv"
+  | UFBV ->
+    SSymbol "ufbv"
   | UsingParams (t', params) ->
     let param_to_sexp (keyword, value) =
       [ SKeyword keyword; SSymbol (string_of_bool value) ] in
