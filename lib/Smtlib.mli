@@ -65,6 +65,10 @@ val declare_fun : solver -> identifier -> sort list -> sort -> unit
 (** [declare_sort solver x arity] runs the command [(declare-sort x arity)] *)
 val declare_sort : solver -> identifier -> int -> unit
 
+val forall_ : solver -> identifier -> sort list -> sort -> unit
+
+val exists_ : solver -> identifier -> sort list -> sort -> unit
+
 (** [assert_ solver term] runs the command [(assert term)] *)
 val assert_ : solver -> term -> unit
 

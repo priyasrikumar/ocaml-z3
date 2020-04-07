@@ -232,6 +232,14 @@ let declare_sort (solver : solver) (id : identifier) (arity : int) : unit =
   expect_success solver
     (SList [SSymbol "declare-sort"; id_to_sexp id; SInt arity])
 
+let forall_ (solver : solver) (id : identifier) (args : sort list) (sort : sort) : unit =
+  expect_success solver
+    (SList ([SSymbol "forall"; id_to_sexp id; SList (List.map (fun s -> sort_to_sexp s) args); sort_to_sexp sort]))
+
+let exists_ (solver : solver) (id : identifier) (args : sort list) (sort : sort) : unit =
+  expect_success solver
+    (SList ([SSymbol "exists"; id_to_sexp id; SList (List.map (fun s -> sort_to_sexp s) args); sort_to_sexp sort]))
+
 let assert_ (solver : solver) (term : term) : unit =
   expect_success solver (SList [SSymbol "assert"; term_to_sexp term])
 
