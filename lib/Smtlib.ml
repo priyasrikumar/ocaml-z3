@@ -154,6 +154,7 @@ type tactic =
   | SAT
   | SMT
   | QFBV
+  | UFBV
   | UsingParams of tactic * (string * bool) list
   | Then of tactic list
 
