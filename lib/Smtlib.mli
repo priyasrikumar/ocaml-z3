@@ -34,6 +34,7 @@ type term =
   | BitVec of int * int
   | BitVec64 of int64
   | Const of identifier
+  | Bind of identifier * sort
   | App of identifier * term list
   | Let of string * term * term
 
@@ -64,10 +65,6 @@ val declare_fun : solver -> identifier -> sort list -> sort -> unit
 
 (** [declare_sort solver x arity] runs the command [(declare-sort x arity)] *)
 val declare_sort : solver -> identifier -> int -> unit
-
-val forall_ : solver -> identifier -> sort list -> sort -> unit
-
-val exists_ : solver -> identifier -> sort list -> sort -> unit
 
 (** [assert_ solver term] runs the command [(assert term)] *)
 val assert_ : solver -> term -> unit
@@ -122,6 +119,10 @@ val const : string -> term
 
 (** [equals e1 e2] produces [(= e1 e2)] *)
 val equals : term -> term -> term
+
+(** [forall_ vars formula] produces [(forall vars formula)].
+    [vars] must consist of terms of the form Bind (id, sort). *)
+val forall_ : term list -> term -> term
 
 (** [and e1 e2] produces [(and e1 e2)]. In addition, nested [and]s are flattened
     to make debugging easier. *)

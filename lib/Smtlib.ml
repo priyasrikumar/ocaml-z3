@@ -90,7 +90,7 @@ let make_solver (z3_path : string) : solver =
       | SSymbol "success" -> solver
       | _ -> failwith "could not configure solver to :print-success"
   with
-    Sys_error ("Bad file descriptor") -> failwith "couldn't talk to solver, double-check path"
+    Sys_error _ -> failwith "couldn't talk to solver, double-check path"
 
 let sexp_to_string (sexp : sexp) : string =
   let open Buffer in
@@ -143,6 +143,7 @@ type term =
   | BitVec of int * int
   | BitVec64 of int64
   | Const of identifier
+  | Bind of identifier * sort
   | App of identifier * term list
   | Let of string * term * term
 
@@ -192,12 +193,15 @@ let rec sort_to_sexp (sort : sort) : sexp = match sort with
     SList ((id_to_sexp x) :: (List.map sort_to_sexp sorts))
   | BitVecSort n -> SList [ SSymbol "_"; SSymbol "BitVec"; SInt n ]
 
+let binding_to_sexp x sort : sexp = SList [ id_to_sexp x; sort_to_sexp sort ]
+
 let rec term_to_sexp (term : term) : sexp = match term with
   | String s -> SString s
   | Int n -> SInt n
   | BitVec (n, w) -> SBitVec (n, w)
   | BitVec64 n -> SBitVec64 n
   | Const x -> id_to_sexp x
+  | Bind (x, sort) -> binding_to_sexp x sort
   | App (f, args) -> SList (id_to_sexp f :: (List.map term_to_sexp args))
   | Let (x, term1, term2) ->
     SList [SSymbol "let";
@@ -231,14 +235,6 @@ let declare_fun (solver : solver) (id : identifier) (args : sort list) (sort : s
 let declare_sort (solver : solver) (id : identifier) (arity : int) : unit =
   expect_success solver
     (SList [SSymbol "declare-sort"; id_to_sexp id; SInt arity])
-
-let forall_ (solver : solver) (id : identifier) (args : sort list) (sort : sort) : unit =
-  expect_success solver
-    (SList ([SSymbol "forall"; id_to_sexp id; SList (List.map (fun s -> sort_to_sexp s) args); sort_to_sexp sort]))
-
-let exists_ (solver : solver) (id : identifier) (args : sort list) (sort : sort) : unit =
-  expect_success solver
-    (SList ([SSymbol "exists"; id_to_sexp id; SList (List.map (fun s -> sort_to_sexp s) args); sort_to_sexp sort]))
 
 let assert_ (solver : solver) (term : term) : unit =
   expect_success solver (SList [SSymbol "assert"; term_to_sexp term])
@@ -345,6 +341,9 @@ let app2 x term1 term2 = App (Id x, [term1; term2])
 let app1 x term = App (Id x, [term])
 
 let equals = app2 "="
+
+let forall_  (vars : term list) (formula : term) : term =
+  App (Id "forall", [ formula ] @ vars)
 
 let and_ term1 term2 = match (term1, term2) with
   | (App (Id "and", alist1), App (Id "and", alist2)) -> App (Id "and", alist1 @ alist2)
