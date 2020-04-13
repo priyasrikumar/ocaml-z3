@@ -332,8 +332,6 @@ let int_to_term n = Int n
 
 let const x = Const (Id x)
 
-let bind_bv id size = Bind (Id id, BitVecSort size)
-
 let bool_to_term b = match b with
   | true -> Const (Id "true")
   | false -> Const (Id "false")

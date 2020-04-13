@@ -117,9 +117,6 @@ val bool_to_term : bool -> term
     variable declared with [(declare-const x sort)] *)
 val const : string -> term
 
-(** [bind_bv x sz] produces [Bind(Id x, BitVecSort sz)] *)
-val bind_bv : string -> int -> term
-
 (** [equals e1 e2] produces [(= e1 e2)] *)
 val equals : term -> term -> term
 
