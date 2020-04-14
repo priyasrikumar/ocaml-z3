@@ -143,6 +143,7 @@ type term =
   | BitVec of int * int
   | BitVec64 of int64
   | Const of identifier
+  | Bind of identifier * sort
   | App of identifier * term list
   | Let of string * term * term
 
@@ -192,12 +193,15 @@ let rec sort_to_sexp (sort : sort) : sexp = match sort with
     SList ((id_to_sexp x) :: (List.map sort_to_sexp sorts))
   | BitVecSort n -> SList [ SSymbol "_"; SSymbol "BitVec"; SInt n ]
 
+let binding_to_sexp x sort : sexp = SList [ id_to_sexp x; sort_to_sexp sort ]
+
 let rec term_to_sexp (term : term) : sexp = match term with
   | String s -> SString s
   | Int n -> SInt n
   | BitVec (n, w) -> SBitVec (n, w)
   | BitVec64 n -> SBitVec64 n
   | Const x -> id_to_sexp x
+  | Bind (x, sort) -> binding_to_sexp x sort
   | App (f, args) -> SList (id_to_sexp f :: (List.map term_to_sexp args))
   | Let (x, term1, term2) ->
     SList [SSymbol "let";
