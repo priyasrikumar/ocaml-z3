@@ -143,7 +143,7 @@ type term =
   | BitVec of int * int
   | BitVec64 of int64
   | Const of identifier
-  | Bind of identifier * sort
+  | ForAll of (identifier * sort) list * term
   | App of identifier * term list
   | Let of string * term * term
 
@@ -193,7 +193,7 @@ let rec sort_to_sexp (sort : sort) : sexp = match sort with
     SList ((id_to_sexp x) :: (List.map sort_to_sexp sorts))
   | BitVecSort n -> SList [ SSymbol "_"; SSymbol "BitVec"; SInt n ]
 
-let binding_to_sexp x sort : sexp = SList [ id_to_sexp x; sort_to_sexp sort ]
+let forall_to_sexp (id, sort) = SList [(id_to_sexp id); (sort_to_sexp sort)]
 
 let rec term_to_sexp (term : term) : sexp = match term with
   | String s -> SString s
@@ -201,7 +201,7 @@ let rec term_to_sexp (term : term) : sexp = match term with
   | BitVec (n, w) -> SBitVec (n, w)
   | BitVec64 n -> SBitVec64 n
   | Const x -> id_to_sexp x
-  | Bind (x, sort) -> binding_to_sexp x sort
+  | ForAll (lst, t) -> SList [SSymbol "forall"; SList (List.map forall_to_sexp lst); (term_to_sexp t)]
   | App (f, args) -> SList (id_to_sexp f :: (List.map term_to_sexp args))
   | Let (x, term1, term2) ->
     SList [SSymbol "let";
@@ -344,8 +344,7 @@ let app1 x term = App (Id x, [term])
 
 let equals = app2 "="
 
-let forall_  (vars : term list) (formula : term) : term =
-  App (Id "forall", [ formula ] @ vars)
+let forall_ (vars: (identifier * sort) list) term : term = ForAll (vars, term)
 
 let and_ term1 term2 = match (term1, term2) with
   | (App (Id "and", alist1), App (Id "and", alist2)) -> App (Id "and", alist1 @ alist2)
