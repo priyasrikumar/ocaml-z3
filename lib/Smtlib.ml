@@ -346,7 +346,8 @@ let app1 x term = App (Id x, [term])
 
 let equals = app2 "="
 
-let forall_ (vars: (identifier * sort) list) term : term = ForAll (vars, term)
+let forall_ (vars: (identifier * sort) list) term : term =
+  if (vars = []) then (equals term term) else ForAll (vars, term)
 
 let and_ term1 term2 = match (term1, term2) with
   | (App (Id "and", alist1), App (Id "and", alist2)) -> App (Id "and", alist1 @ alist2)
