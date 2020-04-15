@@ -20,12 +20,12 @@ let rec write_sexp (out_chan : out_channel) (e : sexp): unit = match e with
 
 and write_sexp_list (out_chan : out_channel) (es : sexp list) : unit =
   match es with
-    | [] -> ()
-    | [e] -> write_sexp out_chan e
-    | e :: es ->
-      (write_sexp out_chan e;
-       output_char out_chan ' ';
-       write_sexp_list out_chan es)
+  | [] -> ()
+  | [e] -> write_sexp out_chan e
+  | e :: es ->
+    (write_sexp out_chan e;
+     output_char out_chan ' ';
+     write_sexp_list out_chan es)
 
 let write (solver : solver) (e : sexp) : unit =
   write_sexp solver.stdin e;
@@ -77,7 +77,7 @@ let make_solver (z3_path : string) : solver =
      when our main ocaml process ends. *)
   let _ = set_close_on_exec z3_stdin_writer; set_close_on_exec z3_stdout_reader in
   let pid = create_process z3_path [| z3_path; "-in"; "-smt2" |]
-    z3_stdin z3_stdout stderr in
+      z3_stdin z3_stdout stderr in
   let in_chan = in_channel_of_descr z3_stdout_reader in
   let out_chan = out_channel_of_descr z3_stdin_writer in
   set_binary_mode_out out_chan false;
@@ -87,8 +87,8 @@ let make_solver (z3_path : string) : solver =
   _names := (solver, ref StringMap.empty) :: !_names;
   try
     match command solver print_success_command with
-      | SSymbol "success" -> solver
-      | _ -> failwith "could not configure solver to :print-success"
+    | SSymbol "success" -> solver
+    | _ -> failwith "could not configure solver to :print-success"
   with
     Sys_error _ -> failwith "couldn't talk to solver, double-check path"
 
@@ -201,7 +201,9 @@ let rec term_to_sexp (term : term) : sexp = match term with
   | BitVec (n, w) -> SBitVec (n, w)
   | BitVec64 n -> SBitVec64 n
   | Const x -> id_to_sexp x
-  | ForAll (lst, t) -> SList [SSymbol "forall"; SList (List.map forall_to_sexp lst); (term_to_sexp t)]
+  | ForAll (lst, t) -> SList [SSymbol "forall";
+                              SList (List.map forall_to_sexp lst);
+                              (term_to_sexp t)]
   | App (f, args) -> SList (id_to_sexp f :: (List.map term_to_sexp args))
   | Let (x, term1, term2) ->
     SList [SSymbol "let";
@@ -260,7 +262,7 @@ let read_objectives (solver : solver) : unit =
 
 let rec check_sat (solver : solver) : check_sat_result =
   let fail sexp  = failwith ("unexpected result from (check-sat), got " ^
-                       sexp_to_string sexp) in
+                             sexp_to_string sexp) in
   let rec read_sat sexp =
     let match_map () = match read solver with
       | SInt n ->
@@ -280,7 +282,7 @@ let rec check_sat (solver : solver) : check_sat_result =
 
 let rec check_sat_using (tactic : tactic) (solver : solver) : check_sat_result =
   let fail sexp  = failwith ("unexpected result from (check-sat-using), got " ^
-                       sexp_to_string sexp) in
+                             sexp_to_string sexp) in
   let rec read_sat sexp =
     let match_map () = match read solver with
       | SInt n ->
