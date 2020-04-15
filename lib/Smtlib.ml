@@ -320,6 +320,8 @@ let get_one_value (solver : solver) (e : term) : term =
 let push (solver : solver) = expect_success solver (SList [SSymbol "push"])
 let pop (solver : solver) = expect_success solver (SList [SSymbol "pop"])
 
+let reset (solver : solver) = expect_success solver (SList [SSymbol "reset"])
+
 let int_sort  = Sort (Id "Int")
 
 let bool_sort = Sort (Id "Bool")

@@ -7,17 +7,17 @@ type solver
 
 (** [make_solver path] produces a handle to a Z3 process.
 
-  The argument [path] must be the path to the Z3 executable. If [z3] is on the
-  [PATH], this can just be ["z3"].
+    The argument [path] must be the path to the Z3 executable. If [z3] is on the
+    [PATH], this can just be ["z3"].
 
-  This command starts Z3 with the flags [-in] and [-smt2]. *)
+    This command starts Z3 with the flags [-in] and [-smt2]. *)
 val make_solver : string -> solver
 
 (** {1 High-level API.}
 
- This high-level API to Z3 provides simple functions to construct
- terms and send commands to Z3. If Z3 produces an error in response to a
- command, that error is raised as an OCaml exception.
+    This high-level API to Z3 provides simple functions to construct
+    terms and send commands to Z3. If Z3 produces an error in response to a
+    command, that error is raised as an OCaml exception.
 *)
 
 type identifier =
@@ -99,6 +99,9 @@ val push : solver -> unit
 
 (** [pop solver] runs the command [(pop)] *)
 val pop : solver -> unit
+
+(** [reset solver] runs the command [(reset)] *)
+val reset : solver -> unit
 
 (** The expression [Int] for the solver. *)
 val int_sort : sort
