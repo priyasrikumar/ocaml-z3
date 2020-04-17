@@ -8,9 +8,6 @@ synopsis: "Z3 wrapper"
 build: [
   ["dune" "build" "--root" "." "--profile" "release" "@install"]
 ]
-install: [
-  [make "install"]
-]
 remove: [
   ["remove" "z3"]
 ]
