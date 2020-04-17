@@ -1,8 +1,5 @@
 build:
-    dune build
+	dune build
 
 clean:
-    dune clean
-
-doc:
-    dune build @doc
+	dune clean
