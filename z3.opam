@@ -9,6 +9,6 @@ build: [
   ["dune" "build" "--root" "." "--profile" "release" "@install"]
 ]
 depends: [
-  "bignum"          {build}
+  "bignum"         
   "dune" {build & >= "2.0"}
 ]
