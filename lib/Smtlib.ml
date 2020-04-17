@@ -109,7 +109,7 @@ let sexp_to_string (sexp : sexp) : string =
     | SInt n -> add_string buf (string_of_int n)
     | SBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%d %d)" n w)
     | SBitVec64 n -> add_string buf (Format.sprintf "(_ bv%Ld 64)" n)
-    | SBigBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%s %s)" (Bigint.to_string n) (string_of_int w)) 
+    | SBigBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%s %s)" (Bigint.to_string n) (string_of_int w))
   and list_to_string (alist : sexp list) : unit = match alist with
     | [] -> ()
     | [x] -> to_string x
@@ -402,6 +402,8 @@ let gte = app2 ">="
 let bv n w = BitVec (n, w)
 
 let bv64 n = BitVec64 n
+
+let bbv n w = BigBitVec (n, w)
 
 let bvadd = app2 "bvadd"
 let bvsub = app2 "bvsub"

@@ -180,6 +180,9 @@ val bv : int -> int -> term
 (** [bv64 n] produces a bit-vector of width [w] that represents the 64-bit integer [n]. *)
 val bv64 : int64 -> term
 
+(** [bbv n w] produces a bit-vector of width [w] that represents an arbitrary-precision integer [n]. *)
+val bbv : Bigint.t -> int -> term
+
 val bvadd : term -> term -> term
 val bvsub : term -> term -> term
 val bvmul : term -> term -> term
