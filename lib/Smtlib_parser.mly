@@ -8,6 +8,7 @@ open Smtlib_syntax
 %token<string> KEYWORD
 %token<int> INT
 %token<int * int> HEX
+%token<Bigint.t * int> BIGHEX
 %token EOF
 
 %start sexp
@@ -22,6 +23,7 @@ sexp_list :
 sexp :
   | INT { SInt $1 }
   | HEX { let (n, w) = $1 in SBitVec (n, w) }
+  | BIGHEX { let (n, w) = $1 in SBigBitVec (n, w) }
   | STRING { SString $1 }
   | SYMBOL { SSymbol $1 }
   | KEYWORD { SKeyword $1 }

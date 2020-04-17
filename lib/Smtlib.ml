@@ -7,6 +7,7 @@ let rec write_sexp (out_chan : out_channel) (e : sexp): unit = match e with
   | SInt n -> output_string out_chan (string_of_int n)
   | SBitVec (n, w) -> Printf.fprintf out_chan "(_ bv%d %d)" n w
   | SBitVec64 n -> Printf.fprintf out_chan "(_ bv%Ld 64)" n
+  | SBigBitVec (n, w) -> Printf.fprintf out_chan "(_ bv%s %s)" (Bigint.to_string n) (string_of_int w)
   | SSymbol str -> output_string out_chan str
   | SKeyword str -> output_string out_chan str
   | SString str ->
@@ -50,6 +51,11 @@ module StringMap = Map.Make(String)
 
 let _names :  (solver * int StringMap.t ref) list ref = ref []
 
+let stringify_process (p: Unix.process_status) = match p with
+  |	WEXITED i	-> "exited with return code "^ (string_of_int i)
+  |	WSIGNALED i	-> "killed by signal "^(string_of_int i)
+  |	WSTOPPED i -> "stopped by signal "^(string_of_int i)
+
 let handle_sigchild (_ : int) : unit =
   if List.length !_solvers = 0
   then ignore @@ Unix.waitpid [] (-1)
@@ -57,7 +63,7 @@ let handle_sigchild (_ : int) : unit =
     begin
       let open Printf in
       let (pid, status) = Unix.waitpid [] (-1) in
-      eprintf "solver child (pid %d) exited\n%!" pid;
+      eprintf "solver child (pid %d), %s, exited\n%!" pid (stringify_process status);
       try
         let solver = List.assoc pid !_solvers in
         close_in_noerr solver.stdout; close_out_noerr solver.stdin
@@ -103,6 +109,7 @@ let sexp_to_string (sexp : sexp) : string =
     | SInt n -> add_string buf (string_of_int n)
     | SBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%d %d)" n w)
     | SBitVec64 n -> add_string buf (Format.sprintf "(_ bv%Ld 64)" n)
+    | SBigBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%s %s)" (Bigint.to_string n) (string_of_int w)) 
   and list_to_string (alist : sexp list) : unit = match alist with
     | [] -> ()
     | [x] -> to_string x
@@ -142,6 +149,7 @@ type term =
   | Int of int
   | BitVec of int * int
   | BitVec64 of int64
+  | BigBitVec of Bigint.t * int
   | Const of identifier
   | ForAll of (identifier * sort) list * term
   | App of identifier * term list
@@ -200,6 +208,7 @@ let rec term_to_sexp (term : term) : sexp = match term with
   | Int n -> SInt n
   | BitVec (n, w) -> SBitVec (n, w)
   | BitVec64 n -> SBitVec64 n
+  | BigBitVec (n, w) -> SBigBitVec (n, w)
   | Const x -> id_to_sexp x
   | ForAll (lst, t) -> SList [SSymbol "forall";
                               SList (List.map forall_to_sexp lst);
@@ -210,11 +219,12 @@ let rec term_to_sexp (term : term) : sexp = match term with
            SList [SList [SSymbol x; term_to_sexp term1]];
            term_to_sexp term2]
 
-let rec sexp_to_term (sexp : sexp) : term = match sexp with
+let sexp_to_term (sexp : sexp) : term = match sexp with
   | SString s -> String s
   | SInt n -> Int n
   | SBitVec (n, w) -> BitVec (n, w)
   | SBitVec64 n -> BitVec64 n
+  | SBigBitVec (n,w) -> BigBitVec (n, w)
   | SSymbol x -> Const (Id x)
   | SList (SSymbol "-" :: SInt x :: []) -> Int (-x)
   | _ -> failwith "unparsable term"
@@ -257,15 +267,15 @@ let minimize (solver : solver) (term : term) : unit =
 
 let read_objectives (solver : solver) : unit =
   match read solver with
-  | SList [SSymbol "objectives"; SList l] -> ()
+  | SList [SSymbol "objectives"; SList _l] -> ()
   | s -> failwith ("unexpected result in optimized objective, got " ^ sexp_to_string s)
 
-let rec check_sat (solver : solver) : check_sat_result =
+let check_sat (solver : solver) : check_sat_result =
   let fail sexp  = failwith ("unexpected result from (check-sat), got " ^
                              sexp_to_string sexp) in
   let rec read_sat sexp =
     let match_map () = match read solver with
-      | SInt n ->
+      | SInt _n ->
         read_sat @@ read solver
       | sexp ->
         fail sexp in
@@ -274,18 +284,18 @@ let rec check_sat (solver : solver) : check_sat_result =
     | SSymbol "unsat" -> Unsat
     | SSymbol "unknown" -> Unknown
     | SSymbol "|->" -> match_map ()
-    | SSymbol sym -> read_sat @@ read solver
-    | SList sexp -> read_sat @@ read solver
+    | SSymbol _sym -> read_sat @@ read solver
+    | SList _sexp -> read_sat @@ read solver
     | sexp -> failwith ("unexpected result from (check-sat), got " ^
                         sexp_to_string sexp) in
   read_sat @@ command solver (SList [SSymbol "check-sat"])
 
-let rec check_sat_using (tactic : tactic) (solver : solver) : check_sat_result =
+let check_sat_using (tactic : tactic) (solver : solver) : check_sat_result =
   let fail sexp  = failwith ("unexpected result from (check-sat-using), got " ^
                              sexp_to_string sexp) in
   let rec read_sat sexp =
     let match_map () = match read solver with
-      | SInt n ->
+      | SInt _n ->
         read_sat @@ read solver
       | sexp ->
         fail sexp in
@@ -294,8 +304,8 @@ let rec check_sat_using (tactic : tactic) (solver : solver) : check_sat_result =
     | SSymbol "unsat" -> Unsat
     | SSymbol "unknown" -> Unknown
     | SSymbol "|->" -> match_map ()
-    | SSymbol sym -> read_sat @@ read solver
-    | SList sexp -> read_sat @@ read solver
+    | SSymbol _sym -> read_sat @@ read solver
+    | SList _sexp -> read_sat @@ read solver
     | sexp -> failwith ("unexpected result from (check-sat-using), got " ^
                         sexp_to_string sexp) in
   let cmd = (SList [SSymbol "check-sat-using"; tactic_to_sexp tactic]) in

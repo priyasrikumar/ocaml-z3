@@ -6,17 +6,20 @@ homepage: "https://github.com/priyasrikumar/ocaml-z3"
 bug-reports: "Arjun Guha <arjun@cs.umass.edu>"
 synopsis: "Z3 wrapper"
 build: [
-  ["./configure" "--prefix" prefix ]
+  ["dune" "build" "-p" name "-j" jobs
+   "@install"
+   "@doc" {with-doc}
+   "@runtest" {with-test} ]
   [make]
 ]
 install: [
   [make "install"]
 ]
 remove: [
-  ["ocamlfind" "remove" "z3"]
+  ["remove" "z3"]
 ]
 depends: [
-  "ocamlfind"       {build}
-  "oasis"           {build & >= "0.4.0"}
   "ppx_deriving"    {>= "4.2"}
+  "bignum"
+  "dune" {>= "2.0"}
 ]
