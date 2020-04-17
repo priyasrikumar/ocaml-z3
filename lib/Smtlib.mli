@@ -30,6 +30,7 @@ type sort =
 
 type term =
   | String of string
+  | Literal of string
   | Int of int
   | BitVec of int * int
   | BitVec64 of int64
