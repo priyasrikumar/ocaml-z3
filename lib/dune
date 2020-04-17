@@ -4,8 +4,8 @@
  (modules Smtlib_parser))
 
 (library
-  (name smtlib)
-  (libraries core bignum z3)
+  (name smt)
+  (libraries bignum z3)
   (virtual_deps menhir)
   (inline_tests)
   (ocamlc_flags -custom -cclib -lstdc++)
