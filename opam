@@ -1,5 +1,5 @@
 opam-version: "2.0"
-version: "1.2.0"
+version: "4.8.7"
 authors: "Arjun Guha et al"
 maintainer: "Arjun Guha <arjun@cs.umass.edu>"
 homepage: "https://github.com/priyasrikumar/ocaml-z3"
