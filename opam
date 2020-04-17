@@ -19,7 +19,6 @@ remove: [
   ["remove" "z3"]
 ]
 depends: [
-  "ppx_deriving"    {>= "4.2"}
   "bignum"          {build}
   "dune" {build & >= "2.0"}
 ]

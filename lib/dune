@@ -8,6 +8,5 @@
   (libraries core bignum z3)
   (virtual_deps menhir)
   (inline_tests)
-  (preprocess (pps ppx_deriving.std))
   (ocamlc_flags -custom -cclib -lstdc++)
   (ocamlopt_flags -cclib -lstdc++))
