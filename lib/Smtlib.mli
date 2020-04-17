@@ -34,6 +34,7 @@ type term =
   | Int of int
   | BitVec of int * int
   | BitVec64 of int64
+  | BigBitVec of Bigint.t * int
   | Const of identifier
   | ForAll of (identifier * sort) list * term
   | App of identifier * term list
@@ -213,6 +214,7 @@ type sexp = Smtlib_syntax.sexp =
   | SInt of int
   | SBitVec of int * int
   | SBitVec64 of int64
+  | SBigBitVec of Bigint.t * int
 
 (** [command solver sexp] sends a command to the solver and reads a response. *)
 val command : solver -> sexp -> sexp

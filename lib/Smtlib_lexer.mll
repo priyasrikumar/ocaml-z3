@@ -2,14 +2,15 @@
   open Lexing
   open Smtlib_parser
 
-  let parse_hex (str : string) : (int * int) =
+  let parse_hex (str : string) : (Bigint.t * int) =
     let len = (String.length str) - 2 in
     let str = "0x" ^ (String.sub str 2 len) in
-    (int_of_string str, len * 4)
-  let parse_bin (str : string) : (int * int) =
+    (Bigint.of_string str, len * 4)
+
+  let parse_bin (str : string) : (Bigint.t * int) =
     let len = (String.length str) - 2 in
     let str = "0b" ^ (String.sub str 2 len) in
-    (int_of_string str, len ) 
+    (Bigint.of_string str, len)
 }
 
 let simple_symbol_char = [ 'A'-'Z' 'a'-'z' '+' '-' '/' '|' '*' '=' '%' '?' '!' '.' '$' '_' '~' '&' '^' '<' '>' '@']
@@ -28,8 +29,14 @@ rule token = parse
   | blank+ { token lexbuf }
   | eof { EOF }
   | numeral as n { INT (int_of_string n) }
-  | hex_int as str { let (n, w) = parse_hex str in HEX (n, w) }
-  | bin_int as str { let (n, w) = parse_bin str in HEX (n,w) }
+  | hex_int as str { let (n, w) = parse_hex str in
+                                  match Bigint.to_int n
+                                  with | Some n' -> HEX (n', w)
+                                       | _ -> BIGHEX (n, w) }
+  | bin_int as str { let (n, w) = parse_bin str in
+                                  match Bigint.to_int n
+                                  with | Some n' -> HEX (n', w)
+                                       | _ -> BIGHEX (n, w) }
   | "(" { LPAREN }
   | ")" { RPAREN }
   | "\"" (string as x) "\"" { STRING x }
