@@ -5,6 +5,7 @@
 
 (library
   (public_name z3)
+  (name z3)
   (modules Smtlib Smtlib_syntax Smtlib_lexer Smtlib_parser)
   (libraries bignum)
   (virtual_deps menhir)
