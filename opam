@@ -20,6 +20,6 @@ remove: [
 ]
 depends: [
   "ppx_deriving"    {>= "4.2"}
-  "bignum"
-  "dune" {>= "2.0"}
+  "bignum"          {build}
+  "dune" {build & >= "2.0"}
 ]
