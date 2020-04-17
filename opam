@@ -8,9 +8,6 @@ synopsis: "Z3 wrapper"
 build: [
   ["dune" "build" "--root" "." "--profile" "release" "@install"]
 ]
-remove: [
-  ["remove" "z3"]
-]
 depends: [
   "bignum"          {build}
   "dune" {build & >= "2.0"}
