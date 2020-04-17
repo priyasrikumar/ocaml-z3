@@ -6,9 +6,10 @@ homepage: "https://github.com/priyasrikumar/ocaml-z3"
 bug-reports: "Arjun Guha <arjun@cs.umass.edu>"
 synopsis: "Z3 wrapper"
 build: [
-  ["dune" "build" "--root" "." "--profile" "release" "@install"]
+  ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "bignum"         
-  "dune" {build & >= "2.0"}
+  "bignum"
+  "ocaml"
+  "dune" {build}
 ]
