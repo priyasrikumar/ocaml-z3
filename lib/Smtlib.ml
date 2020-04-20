@@ -7,7 +7,8 @@ let rec write_sexp (out_chan : out_channel) (e : sexp): unit = match e with
   | SInt n -> output_string out_chan (string_of_int n)
   | SBitVec (n, w) -> Printf.fprintf out_chan "(_ bv%d %d)" n w
   | SBitVec64 n -> Printf.fprintf out_chan "(_ bv%Ld 64)" n
-  | SBigBitVec (n, w) -> Printf.fprintf out_chan "(_ bv%s %s)" (Bigint.to_string n) (string_of_int w)
+  | SBigBitVec (n, w) -> Printf.fprintf out_chan "(_ bv%s %s)"
+                           (Bigint.to_string n) (string_of_int w)
   | SSymbol str -> output_string out_chan str
   | SKeyword str -> output_string out_chan str
   | SString str ->
@@ -63,7 +64,8 @@ let handle_sigchild (_ : int) : unit =
     begin
       let open Printf in
       let (pid, status) = Unix.waitpid [] (-1) in
-      eprintf "solver child (pid %d), %s, exited\n%!" pid (stringify_process status);
+      eprintf "solver child (pid %d), %s, exited\n%!"
+        pid (stringify_process status);
       try
         let solver = List.assoc pid !_solvers in
         close_in_noerr solver.stdout; close_out_noerr solver.stdin
@@ -109,7 +111,9 @@ let sexp_to_string (sexp : sexp) : string =
     | SInt n -> add_string buf (string_of_int n)
     | SBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%d %d)" n w)
     | SBitVec64 n -> add_string buf (Format.sprintf "(_ bv%Ld 64)" n)
-    | SBigBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%s %s)" (Bigint.to_string n) (string_of_int w))
+    | SBigBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%s %s)"
+                                             (Bigint.to_string n)
+                                             (string_of_int w))
   and list_to_string (alist : sexp list) : unit = match alist with
     | [] -> ()
     | [x] -> to_string x
@@ -210,9 +214,12 @@ let rec term_to_sexp (term : term) : sexp = match term with
   | BitVec64 n -> SBitVec64 n
   | BigBitVec (n, w) -> SBigBitVec (n, w)
   | Const x -> id_to_sexp x
-  | ForAll (lst, t) -> SList (List.concat [[SSymbol "forall"];
-                              List.map (fun (id, sort) -> SList [id_to_sexp id; sort_to_sexp sort]) lst;
-                              [(term_to_sexp t)]])
+  | ForAll (lst, t) -> SList [SSymbol "forall";
+                              SList (List.concat [
+                                  (List.map (fun (id, sort) ->
+                                       SList [id_to_sexp id; sort_to_sexp sort])
+                                      lst)]);
+                              (term_to_sexp t)]
   | App (f, args) -> SList (id_to_sexp f :: (List.map term_to_sexp args))
   | Let (x, term1, term2) ->
     SList [SSymbol "let";
