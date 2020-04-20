@@ -202,8 +202,6 @@ let rec sort_to_sexp (sort : sort) : sexp = match sort with
     SList ((id_to_sexp x) :: (List.map sort_to_sexp sorts))
   | BitVecSort n -> SList [ SSymbol "_"; SSymbol "BitVec"; SInt n ]
 
-let forall_to_sexp (id, sort) = SList [(id_to_sexp id); (sort_to_sexp sort)]
-
 let rec term_to_sexp (term : term) : sexp = match term with
   | String s -> SString s
   | Literal s -> SSymbol s
@@ -212,9 +210,9 @@ let rec term_to_sexp (term : term) : sexp = match term with
   | BitVec64 n -> SBitVec64 n
   | BigBitVec (n, w) -> SBigBitVec (n, w)
   | Const x -> id_to_sexp x
-  | ForAll (lst, t) -> SList [SSymbol "forall";
-                              SList (List.map forall_to_sexp lst);
-                              (term_to_sexp t)]
+  | ForAll (lst, t) -> SList (List.concat [[SSymbol "forall"];
+                              List.map (fun (id, sort) -> SList [id_to_sexp id; sort_to_sexp sort]) lst;
+                              [(term_to_sexp t)]])
   | App (f, args) -> SList (id_to_sexp f :: (List.map term_to_sexp args))
   | Let (x, term1, term2) ->
     SList [SSymbol "let";
