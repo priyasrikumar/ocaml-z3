@@ -2,6 +2,29 @@ include Smtlib_syntax
 
 type solver = { stdin : out_channel; stdout : in_channel; stdout_lexbuf : Lexing.lexbuf }
 
+let sexp_to_string (sexp : sexp) : string =
+  let open Buffer in
+  let buf = create 100 in
+  let rec to_string (sexp : sexp) : unit = match sexp with
+    | SList alist -> add_char buf '('; list_to_string alist; add_char buf ')'
+    | SSymbol x -> add_string buf x;
+    | SKeyword x -> add_string buf x;
+    | SString x -> add_char buf '"'; add_string buf x; add_char buf '"'
+    | SInt n -> add_string buf (string_of_int n)
+    | SBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%d %d)" n w)
+    | SBitVec64 n -> add_string buf (Format.sprintf "(_ bv%Ld 64)" n)
+    | SBigBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%s %s)"
+                                             (Bigint.to_string n)
+                                             (string_of_int w))
+  and list_to_string (alist : sexp list) : unit = match alist with
+    | [] -> ()
+    | [x] -> to_string x
+    | x :: xs -> to_string x; add_char buf ' '; list_to_string xs in
+  to_string sexp;
+  contents buf
+
+
+
 (* Does not flush *)
 let rec write_sexp (out_chan : out_channel) (e : sexp): unit = match e with
   | SInt n -> output_string out_chan (string_of_int n)
@@ -84,8 +107,15 @@ let make_solver (z3_path : string) : solver =
      will remain open in the fork/exec'd z3 process, and z3 won't exit
      when our main ocaml process ends. *)
   let _ = set_close_on_exec z3_stdin_writer; set_close_on_exec z3_stdout_reader in
-  let pid = create_process z3_path [| z3_path; "-in"; "-smt2" |]
-      z3_stdin z3_stdout stderr in
+  let pid =
+    if Core.String.is_substring z3_path ~substring:"boolector" then begin
+        create_process z3_path [| z3_path; "--smt2"; "-m"; "-i" |]
+          z3_stdin z3_stdout stderr
+      end else begin
+        create_process z3_path [| z3_path; "-in"; "-smt2" |]
+          z3_stdin z3_stdout stderr
+      end
+  in
   let in_chan = in_channel_of_descr z3_stdout_reader in
   let out_chan = out_channel_of_descr z3_stdin_writer in
   set_binary_mode_out out_chan false;
@@ -100,26 +130,6 @@ let make_solver (z3_path : string) : solver =
   with
     Sys_error _ -> failwith "couldn't talk to solver, double-check path"
 
-let sexp_to_string (sexp : sexp) : string =
-  let open Buffer in
-  let buf = create 100 in
-  let rec to_string (sexp : sexp) : unit = match sexp with
-    | SList alist -> add_char buf '('; list_to_string alist; add_char buf ')'
-    | SSymbol x -> add_string buf x;
-    | SKeyword x -> add_string buf x;
-    | SString x -> add_char buf '"'; add_string buf x; add_char buf '"'
-    | SInt n -> add_string buf (string_of_int n)
-    | SBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%d %d)" n w)
-    | SBitVec64 n -> add_string buf (Format.sprintf "(_ bv%Ld 64)" n)
-    | SBigBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%s %s)"
-                                             (Bigint.to_string n)
-                                             (string_of_int w))
-  and list_to_string (alist : sexp list) : unit = match alist with
-    | [] -> ()
-    | [x] -> to_string x
-    | x :: xs -> to_string x; add_char buf ' '; list_to_string xs in
-  to_string sexp;
-  contents buf
 
 let fresh_name (solver : solver) (base : string) : sexp =
   let names =
@@ -237,11 +247,12 @@ let sexp_to_term (sexp : sexp) : term = match sexp with
   | _ -> failwith "unparsable term"
 
 let expect_success (solver : solver) (sexp : sexp) : unit =
-  match command solver sexp with
-  | SSymbol "success" -> ()
-  | SList [SSymbol "error"; SString x] -> failwith x
-  | sexp -> failwith ("expected either success or error from solver, got " ^
-                      (sexp_to_string sexp))
+  silent_command solver sexp
+  (* match command solver sexp with
+   * | SSymbol "success" -> ()
+   * | SList [SSymbol "error"; SString x] -> failwith x
+   * | sexp -> failwith ("expected either success or error from solver, got " ^
+   *                       (sexp_to_string sexp)) *)
 
 let declare_const (solver : solver) (id : identifier) (sort : sort) : unit =
   expect_success solver
@@ -336,8 +347,8 @@ let get_one_value (solver : solver) (e : term) : term =
   | sexp -> failwith ("expected a single pair, got " ^
                       (sexp_to_string sexp))
 
-let push (solver : solver) = expect_success solver (SList [SSymbol "push"])
-let pop (solver : solver) = expect_success solver (SList [SSymbol "pop"])
+let push (solver : solver) = expect_success solver (SList [SSymbol "push"; SSymbol "1"])
+let pop (solver : solver) = expect_success solver (SList [SSymbol "pop"; SSymbol "1"])
 
 let reset (solver : solver) = expect_success solver (SList [SSymbol "reset"])
 
