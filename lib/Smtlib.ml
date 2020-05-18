@@ -2,6 +2,28 @@ include Smtlib_syntax
 
 type solver = { stdin : out_channel; stdout : in_channel; stdout_lexbuf : Lexing.lexbuf }
 
+let sexp_to_string (sexp : sexp) : string =
+  let open Buffer in
+  let buf = create 100 in
+  let rec to_string (sexp : sexp) : unit = match sexp with
+    | SList alist -> add_char buf '('; list_to_string alist; add_char buf ')'
+    | SSymbol x -> add_string buf x;
+    | SKeyword x -> add_string buf x;
+    | SString x -> add_char buf '"'; add_string buf x; add_char buf '"'
+    | SInt n -> add_string buf (string_of_int n)
+    | SBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%d %d)" n w)
+    | SBitVec64 n -> add_string buf (Format.sprintf "(_ bv%Ld 64)" n)
+    | SBigBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%s %s)"
+                                             (Bigint.to_string n)
+                                             (string_of_int w))
+  and list_to_string (alist : sexp list) : unit = match alist with
+    | [] -> ()
+    | [x] -> to_string x
+    | x :: xs -> to_string x; add_char buf ' '; list_to_string xs in
+  to_string sexp;
+  contents buf
+
+
 (* Does not flush *)
 let rec write_sexp (out_chan : out_channel) (e : sexp): unit = match e with
   | SInt n -> output_string out_chan (string_of_int n)
@@ -37,7 +59,13 @@ let write (solver : solver) (e : sexp) : unit =
 let read (solver : solver) : sexp =
   Smtlib_parser.sexp Smtlib_lexer.token solver.stdout_lexbuf
 
-let command (solver : solver) (sexp : sexp) = write solver sexp; read solver
+let command (solver : solver) (sexp : sexp) =
+  (* Printf.printf "Writing\n%s\n%!" (sexp_to_string sexp); *)
+  write solver sexp;
+  (* Printf.printf "written\n%!"; *)
+  let r = read solver in
+  (* Printf.printf "Read\n%!"; *)
+  r
 
 let silent_command (solver : solver) (sexp : sexp) = write solver sexp
 
@@ -100,26 +128,6 @@ let make_solver (z3_path : string) : solver =
   with
     Sys_error _ -> failwith "couldn't talk to solver, double-check path"
 
-let sexp_to_string (sexp : sexp) : string =
-  let open Buffer in
-  let buf = create 100 in
-  let rec to_string (sexp : sexp) : unit = match sexp with
-    | SList alist -> add_char buf '('; list_to_string alist; add_char buf ')'
-    | SSymbol x -> add_string buf x;
-    | SKeyword x -> add_string buf x;
-    | SString x -> add_char buf '"'; add_string buf x; add_char buf '"'
-    | SInt n -> add_string buf (string_of_int n)
-    | SBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%d %d)" n w)
-    | SBitVec64 n -> add_string buf (Format.sprintf "(_ bv%Ld 64)" n)
-    | SBigBitVec (n, w) -> add_string buf (Format.sprintf "(_ bv%s %s)"
-                                             (Bigint.to_string n)
-                                             (string_of_int w))
-  and list_to_string (alist : sexp list) : unit = match alist with
-    | [] -> ()
-    | [x] -> to_string x
-    | x :: xs -> to_string x; add_char buf ' '; list_to_string xs in
-  to_string sexp;
-  contents buf
 
 let fresh_name (solver : solver) (base : string) : sexp =
   let names =
@@ -170,6 +178,7 @@ type tactic =
   | QFBV
   | UFBV
   | UsingParams of tactic * (string * bool) list
+  | ParOr of tactic * tactic
   | Then of tactic list
 
 let rec tactic_to_sexp (t : tactic) : sexp = match t with
@@ -195,7 +204,9 @@ let rec tactic_to_sexp (t : tactic) : sexp = match t with
     SList ((SSymbol "using-params") :: (tactic_to_sexp t')
            :: (List.concat @@ List.map param_to_sexp params))
   | Then ts ->
-    SList ((SSymbol "then") :: List.map tactic_to_sexp ts)
+     SList ((SSymbol "then") :: List.map tactic_to_sexp ts)
+  | ParOr (t,s) ->
+     SList [SSymbol "par-or"; tactic_to_sexp t; tactic_to_sexp s]
 
 let id_to_sexp (id : identifier) : sexp = match id with
   | Id x -> SSymbol x
@@ -294,7 +305,7 @@ let check_sat (solver : solver) : check_sat_result =
     | SSymbol _sym -> read_sat @@ read solver
     | SList _sexp -> read_sat @@ read solver
     | sexp -> failwith ("unexpected result from (check-sat), got " ^
-                        sexp_to_string sexp) in
+                          sexp_to_string sexp) in
   read_sat @@ command solver (SList [SSymbol "check-sat"])
 
 let check_sat_using (tactic : tactic) (solver : solver) : check_sat_result =
@@ -364,7 +375,7 @@ let app1 x term = App (Id x, [term])
 let equals = app2 "="
 
 let forall_ (vars: (identifier * sort) list) term : term =
-  if (vars = []) then (equals term term) else ForAll (vars, term)
+  if (vars = []) then term else ForAll (vars, term)
 
 let and_ term1 term2 = match (term1, term2) with
   | (App (Id "and", alist1), App (Id "and", alist2)) -> App (Id "and", alist1 @ alist2)

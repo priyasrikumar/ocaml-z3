@@ -52,6 +52,7 @@ type tactic =
   | UFBV
   (** Tactic combinators *)
   | UsingParams of tactic * (string * bool) list
+  | ParOr of tactic * tactic
   | Then of tactic list
 
 type check_sat_result =
