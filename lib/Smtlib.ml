@@ -443,3 +443,6 @@ let bvult = app2 "bvult"
 let bvule = app2 "bvule"
 let bvneg = app1 "bvneg"
 let bvnot = app1 "bvnot"
+
+let concat = app2 "concat"
+let extract i j term = App(Id (Printf.sprintf "(_ extract %d %d)" i j), [term])
