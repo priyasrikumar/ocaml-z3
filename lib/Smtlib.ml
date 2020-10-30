@@ -254,12 +254,12 @@ let sexp_to_term (sexp : sexp) : term = match sexp with
   | _ -> failwith "unparsable term"
 
 let expect_success (solver : solver) (sexp : sexp) : unit =
-  silent_command solver sexp
-  (* match command solver sexp with
-   * | SSymbol "success" -> ()
-   * | SList [SSymbol "error"; SString x] -> failwith x
-   * | sexp -> failwith ("expected either success or error from solver, got " ^
-   *                       (sexp_to_string sexp)) *)
+  (* silent_command solver sexp *)
+  match command solver sexp with
+  | SSymbol "success" -> ()
+  | SList [SSymbol "error"; SString x] -> failwith x
+  | sexp -> failwith ("expected either success or error from solver, got " ^
+                        (sexp_to_string sexp))
 
 let declare_const (solver : solver) (id : identifier) (sort : sort) : unit =
   expect_success solver
