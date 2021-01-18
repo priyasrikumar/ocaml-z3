@@ -53,6 +53,7 @@ type tactic =
   (** Tactic combinators *)
   | UsingParams of tactic * (string * bool) list
   | ParOr of tactic * tactic
+  | OrElse of tactic * tactic         
   | Then of tactic list
 
 type check_sat_result =

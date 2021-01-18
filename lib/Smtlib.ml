@@ -185,6 +185,7 @@ type tactic =
   | UFBV
   | UsingParams of tactic * (string * bool) list
   | ParOr of tactic * tactic
+  | OrElse of tactic * tactic
   | Then of tactic list
 
 let rec tactic_to_sexp (t : tactic) : sexp = match t with
@@ -212,7 +213,10 @@ let rec tactic_to_sexp (t : tactic) : sexp = match t with
   | Then ts ->
      SList ((SSymbol "then") :: List.map tactic_to_sexp ts)
   | ParOr (t,s) ->
-     SList [SSymbol "par-or"; tactic_to_sexp t; tactic_to_sexp s]
+    SList [SSymbol "par-or"; tactic_to_sexp t; tactic_to_sexp s]
+  | OrElse (t,s) ->
+     SList [SSymbol "or-else"; tactic_to_sexp t; tactic_to_sexp s]
+    
 
 let id_to_sexp (id : identifier) : sexp = match id with
   | Id x -> SSymbol x
