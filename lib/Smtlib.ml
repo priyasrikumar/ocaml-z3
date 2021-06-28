@@ -68,9 +68,6 @@ let command (solver : solver) (sexp : sexp) =
 
 let silent_command (solver : solver) (sexp : sexp) = write solver sexp
 
-let print_success_command =
-  SList [SSymbol "set-option"; SKeyword ":print-success"; SSymbol "true"]
-
 (* keep track of all solvers we spawn, so we can close our read/write
    FDs when the solvers exit *)
 let _solvers : (int * solver) list ref = ref []
@@ -127,12 +124,7 @@ let make_solver (z3_path : string) : solver =
   let solver = { stdin = out_chan; stdout = in_chan; stdout_lexbuf = Lexing.from_channel in_chan } in
   _solvers := (pid, solver) :: !_solvers;
   _names := (solver, ref StringMap.empty) :: !_names;
-  try
-    match command solver print_success_command with
-    | SSymbol "success" -> solver
-    | _ -> failwith "could not configure solver to :print-success"
-  with
-    Sys_error _ -> failwith "couldn't talk to solver, double-check path"
+  solver
 
 
 let fresh_name (solver : solver) (base : string) : sexp =
