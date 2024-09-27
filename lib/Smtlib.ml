@@ -59,17 +59,12 @@ let read (solver : solver) : sexp =
   Smtlib_parser.sexp Smtlib_lexer.token solver.stdout_lexbuf
 
 let command (solver : solver) (sexp : sexp) =
-  (* Printf.printf "Writing\n%s\n%!" (sexp_to_string sexp); *)
   write solver sexp;
-  (* Printf.printf "written\n%!"; *)
-  let r = read solver in
-  (* Printf.printf "Read\n%!"; *)
-  r
+  read solver
 
-let silent_command (solver : solver) (sexp : sexp) = write solver sexp
-
-let print_success_command =
-  SList [SSymbol "set-option"; SKeyword ":print-success"; SSymbol "true"]
+let silent_command (solver : solver) (sexp : sexp) =
+  (* sexp_to_string sexp |> Printf.printf "%s\n%!"; *)
+  write solver sexp
 
 (* keep track of all solvers we spawn, so we can close our read/write
    FDs when the solvers exit *)
@@ -127,13 +122,12 @@ let make_solver (z3_path : string) : solver =
   let solver = { stdin = out_chan; stdout = in_chan; stdout_lexbuf = Lexing.from_channel in_chan } in
   _solvers := (pid, solver) :: !_solvers;
   _names := (solver, ref StringMap.empty) :: !_names;
-  try
-    match command solver print_success_command with
-    | SSymbol "success" -> solver
-    | _ -> failwith "could not configure solver to :print-success"
-  with
-    Sys_error _ -> failwith "couldn't talk to solver, double-check path"
+  solver
 
+let set_option (solver : solver) (optname : string) (value : bool) : unit =
+  silent_command solver (SList [SSymbol ("set-option"); 
+                                SSymbol (optname); 
+                                SSymbol (if value then "true" else "false")])
 
 let fresh_name (solver : solver) (base : string) : sexp =
   let names =
@@ -173,6 +167,8 @@ type term =
   | ForAll of (identifier * sort) list * term
   | App of identifier * term list
   | Let of string * term * term
+
+type model = (identifier * term) list
 
 type tactic =
   | Simplify
@@ -247,7 +243,7 @@ let rec term_to_sexp (term : term) : sexp = match term with
            SList [SList [SSymbol x; term_to_sexp term1]];
            term_to_sexp term2]
 
-let sexp_to_term (sexp : sexp) : term = match sexp with
+let rec sexp_to_term (sexp : sexp) : term = match sexp with
   | SString s -> String s
   | SInt n -> Int n
   | SBitVec (n, w) -> BitVec (n, w)
@@ -255,7 +251,8 @@ let sexp_to_term (sexp : sexp) : term = match sexp with
   | SBigBitVec (n,w) -> BigBitVec (n, w)
   | SSymbol x -> Const (Id x)
   | SList (SSymbol "-" :: SInt x :: []) -> Int (-x)
-  | _ -> failwith "unparsable term"
+  | SList (SSymbol f :: tail) -> App (Id f, List.map sexp_to_term tail)
+  | _ -> failwith ("unparsable term: " ^ (sexp_to_string sexp))
 
 let expect_success (solver : solver) (sexp : sexp) : unit =
   silent_command solver sexp
@@ -279,6 +276,10 @@ let declare_sort (solver : solver) (id : identifier) (arity : int) : unit =
 
 let assert_ (solver : solver) (term : term) : unit =
   expect_success solver (SList [SSymbol "assert"; term_to_sexp term])
+
+let assert_named  (solver : solver) (name : string) (term : term) : unit =
+  let cmd = SList [SSymbol "assert"; SList [SSymbol "!"; (term_to_sexp term); SSymbol ":named"; SSymbol name]] in
+  expect_success solver cmd
 
 let assert_soft (solver : solver) ?weight:(weight = 1) ?id:(id = "") (term : term) : unit =
   let id_suffix = match id with
@@ -340,16 +341,23 @@ let check_sat_using (tactic : tactic) (solver : solver) : check_sat_result =
   let cmd = (SList [SSymbol "check-sat-using"; tactic_to_sexp tactic]) in
   read_sat @@ command solver cmd
 
-let get_model (solver : solver) : (identifier * term) list =
+let get_model (solver : solver) : model =
   let rec read_model sexp = match sexp with
     | [] -> []
     | (SList [SSymbol "define-fun"; SSymbol x; SList []; _; sexp]) :: rest ->
       (Id x, sexp_to_term sexp) :: read_model rest
     | _ :: rest -> read_model rest in
   match command solver (SList [SSymbol "get-model"]) with
-  | SList (SSymbol "model" :: alist) -> read_model alist
+  | SList (SSymbol "model" :: alist)
+  | SList (alist) -> read_model alist
   | sexp -> failwith ("expected model, got " ^ (sexp_to_string sexp))
 
+let get_unsat_core (solver : solver) : string list =
+  let sexp = command solver (SList [SSymbol "get-unsat-core"]) in
+  match sexp with
+  | SList lst -> List.map sexp_to_string lst
+  | _ -> failwith "Unsat core was not list"
+  
 let get_one_value (solver : solver) (e : term) : term =
   let res = command solver
       (SList [SSymbol "get-value"; SList [term_to_sexp e]]) in
@@ -375,7 +383,7 @@ let int_to_term n = Int n
 
 let const x = Const (Id x)
 
-let bool_to_term b = match b with
+let bool_to_term = function
   | true -> Const (Id "true")
   | false -> Const (Id "false")
 
@@ -457,3 +465,18 @@ let bvnot = app1 "bvnot"
 
 let concat = app2 "concat"
 let extract i j term = App(Id (Printf.sprintf "(_ extract %d %d)" i j), [term])
+
+let get_all_models (solver : solver) : model Seq.t =
+  (* ``All models are wrong, but some are useful.'' --George Box *)
+  let step () : (model*unit) option =
+    match check_sat solver with
+    | Unsat | Unknown -> None
+    | Sat ->
+        let model = get_model solver in
+
+        (* Assert that the last model is not valid *)
+        let big_or = List.fold_left (fun accum (id, term) -> 
+                        or_ accum (not_ (equals (Const id) term))) (bool_to_term false) model in
+        let () = assert_ solver big_or in
+        Some (model, ()) in
+  Seq.unfold step ()

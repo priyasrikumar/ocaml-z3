@@ -40,6 +40,8 @@ type term =
   | App of identifier * term list
   | Let of string * term * term
 
+type model = (identifier * term) list
+
 (** Tactics to configure z3's solver strategy. *)
 type tactic =
   | Simplify
@@ -61,6 +63,9 @@ type check_sat_result =
   | Unsat
   | Unknown
 
+(** [set_option optname value] runs the command [(set-option optname value)] *)
+val set_option : solver -> string -> bool -> unit
+
 (** [declare_const solver x sort] runs the command [(declare-const x sort)] *)
 val declare_const : solver -> identifier -> sort -> unit
 
@@ -72,6 +77,9 @@ val declare_sort : solver -> identifier -> int -> unit
 
 (** [assert_ solver term] runs the command [(assert term)] *)
 val assert_ : solver -> term -> unit
+
+(** [assert_ solver term] runs the command [(assert (! term) :named name)] *)
+val assert_named : solver -> string -> term -> unit
 
 (** [assert_soft solver term ?~weight ?~id] runs the command [(assert-soft term :weight ~weight :id ~id] *)
 val assert_soft : solver -> ?weight:int -> ?id:string -> term -> unit
@@ -93,7 +101,14 @@ val check_sat : solver -> check_sat_result
 val check_sat_using : tactic -> solver -> check_sat_result
 
 (** [get_model solver] runs the command [(get-model)] *)
-val get_model : solver -> (identifier * term) list
+val get_model : solver -> model
+
+(** [get_all_models solver] repeatedly runs [get_model solver] and
+    invalidates the resulting model in order to get another one,
+    until UNSAT or UNKNOWN is reached. *)
+val get_all_models : solver -> model Seq.t
+
+val get_unsat_core : solver -> string list
 
 (** [get_one_value solver e] runs the command [(get-value e)] *)
 val get_one_value : solver -> term -> term

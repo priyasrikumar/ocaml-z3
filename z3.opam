@@ -11,5 +11,6 @@ build: [
 depends: [
   "bignum"
   "ocaml"
+  "menhir"
   "dune" {build}
 ]
